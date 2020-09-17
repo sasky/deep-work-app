@@ -1,8 +1,11 @@
 module Main exposing (Model, Msg(..), Task, main)
 
 import Browser
-import Html exposing (Html, h2, li, pre, section, span, text, ul)
-import Html.Attributes exposing (class, classList, list, selected)
+import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
+import Html exposing (Html)
 
 
 
@@ -18,20 +21,20 @@ main =
 
 
 
--- Debug.todo "add some style elm ui or tail wind"
--- Debug.todo "move list items around by drag and drop"
+-- Debug.todo "add colours and layout ( still mvp)"
 -- Debug.todo "Add a Select merchanic ( only one item to be selected at a time ) "
 -- Debug.todo "move list items around by arrows when selected"
+-- Debug.todo "move list items around by drag and drop"
 -- MODEL
 
 
 type alias Model =
-    List Task
+    { tasks : List Task
+    }
 
 
 type alias Task =
-    { id : Int
-    , text : String
+    { text : String
     , minutes : Int
     , selected : Bool
     , status : Status
@@ -46,37 +49,34 @@ type Status
 
 init : Model
 init =
-    [ { id = 1
-      , text = "example todo task"
-      , minutes = 45
-      , selected = False
-      , status = Todo
-      }
-    , { id = 2
-      , text = " another example todo task"
-      , minutes = 20
-      , selected = False
-      , status = Todo
-      }
-    , { id = 3
-      , text = "example Doing task"
-      , minutes = 45
-      , selected = False
-      , status = Doing
-      }
-    , { id = 4
-      , text = "example done task"
-      , minutes = 45
-      , selected = False
-      , status = Done
-      }
-    , { id = 5
-      , text = " another example done task"
-      , minutes = 20
-      , selected = False
-      , status = Done
-      }
-    ]
+    { tasks =
+        [ { text = "example todo task"
+          , minutes = 45
+          , selected = False
+          , status = Todo
+          }
+        , { text = " another example todo task"
+          , minutes = 20
+          , selected = False
+          , status = Todo
+          }
+        , { text = "example Doing task"
+          , minutes = 45
+          , selected = False
+          , status = Doing
+          }
+        , { text = "example done task"
+          , minutes = 45
+          , selected = False
+          , status = Done
+          }
+        , { text = " another example done task"
+          , minutes = 20
+          , selected = False
+          , status = Done
+          }
+        ]
+    }
 
 
 
@@ -103,38 +103,72 @@ update msg model =
 
 
 
--- SUBSCRIPTIONS
--- VIEW
+-- View
+-- Colours
+-- colours :
+
+
+colours =
+    { green = rgb255 138 220 84
+    , red = rgb255 255 50 116
+    , purple = rgb255 145 120 222
+    , teal = rgb255 66 215 228
+    , yellow = rgb255 255 209 60
+    , grey = rgb255 87 85 87
+    , darkGrey = rgb255 34 31 35
+    }
 
 
 view : Model -> Html Msg
 view model =
-    section []
-        [ h2 [] [ text "Doing" ]
-        , renderTasks Doing model
-        , h2 [] [ text "Todo" ]
-        , renderTasks Todo model
-        , h2 [] [ text "Done" ]
-        , renderTasks Done model
+    Element.layout
+        [ Font.color (rgb255 251 251 248)
         ]
-
-
-renderTasks : Status -> Model -> Html Msg
-renderTasks status model =
-    ul []
-        (List.filter (\t -> t.status == status) model
-            |> List.map renderTask
+        (row
+            [ width fill
+            , height fill
+            ]
+            [ column
+                [ width (fillPortion 1)
+                , height fill
+                , Background.color colours.grey
+                ]
+                [ text "left" ]
+            , column
+                [ width (fillPortion 4)
+                , height fill
+                , Background.color colours.darkGrey
+                ]
+                (List.map
+                    viewTask
+                    model.tasks
+                )
+            , column
+                [ width (fillPortion 1)
+                , height fill
+                , Background.color colours.grey
+                ]
+                [ text "right" ]
+            ]
         )
 
 
-renderTask : Task -> Html Msg
-renderTask task =
-    li []
-        [ span [ class "text" ] [ text task.text ]
-        , span [ class "minutes" ] [ text (String.fromInt task.minutes) ]
+
+-- (List.map viewTask model.tasks))
+
+
+viewTask : Task -> Element Msg
+viewTask task =
+    row
+        [ paddingXY 0 20
+        , centerX
+        , width fill
         ]
-
-
-
--- [ span [ class "text" ] [ text task.text ] ]
--- , [ span [ class "minutes" ] [ text task.minutes ] ]
+        [ el
+            [ padding 30
+            , width fill
+            , Border.widthEach { right = 1, left = 1, top = 1, bottom = 1 }
+            , Border.color colours.teal
+            ]
+            (text task.text)
+        ]
