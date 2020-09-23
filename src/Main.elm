@@ -1,11 +1,29 @@
 module Main exposing (Model, Msg(..), Task, main)
 
 import Browser
+import Browser.Events as Events exposing (onKeyDown)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
+import Json.Decode exposing (Decoder, field, string)
+
+
+
+-- onKeyUp : (Int -> msg) -> Attribute msg
+-- onKeyUp tagger =
+--   on "keyup" (Json.map tagger keyCode)
+
+
+keyDecoder : Decoder Msg
+keyDecoder =
+    Json.Decode.map OnKeyDownMsg (field "key" string)
+
+
+toKey : String -> Msg
+toKey key =
+    OnKeyDownMsg key
 
 
 
@@ -13,14 +31,25 @@ import Html exposing (Html)
 
 
 main =
-    Browser.sandbox
+    Browser.element
         { init = init
-        , update = update
         , view = view
+        , update = update
+        , subscriptions = subscriptions
         }
 
 
 
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Events.onKeyDown keyDecoder
+
+
+
+-- Debug.todo " up and down arrow keys to move selected"
 -- Debug.todo "add colours and layout ( still mvp)"
 -- Debug.todo "Add a Select merchanic ( only one item to be selected at a time ) "
 -- Debug.todo "move list items around by arrows when selected"
@@ -47,36 +76,38 @@ type Status
     | Done
 
 
-init : Model
-init =
-    { tasks =
-        [ { text = "example todo task"
-          , minutes = 45
-          , selected = False
-          , status = Todo
-          }
-        , { text = " another example todo task"
-          , minutes = 20
-          , selected = False
-          , status = Todo
-          }
-        , { text = "example Doing task"
-          , minutes = 45
-          , selected = False
-          , status = Doing
-          }
-        , { text = "example done task"
-          , minutes = 45
-          , selected = False
-          , status = Done
-          }
-        , { text = " another example done task"
-          , minutes = 20
-          , selected = False
-          , status = Done
-          }
-        ]
-    }
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( { tasks =
+            [ { text = "example todo task"
+              , minutes = 45
+              , selected = False
+              , status = Todo
+              }
+            , { text = " another example todo task"
+              , minutes = 20
+              , selected = False
+              , status = Todo
+              }
+            , { text = "example Doing task"
+              , minutes = 45
+              , selected = False
+              , status = Doing
+              }
+            , { text = "example done task"
+              , minutes = 45
+              , selected = True
+              , status = Done
+              }
+            , { text = " another example done task"
+              , minutes = 20
+              , selected = False
+              , status = Done
+              }
+            ]
+      }
+    , Cmd.none
+    )
 
 
 
@@ -87,19 +118,24 @@ type Msg
     = Add Task
     | Delete Int
     | Edit Task
+    | OnKeyDownMsg String
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Add task ->
-            model
+            ( model, Cmd.none )
 
         Delete id ->
-            model
+            ( model, Cmd.none )
 
         Edit task ->
-            model
+            ( model, Cmd.none )
+
+        OnKeyDownMsg key ->
+            Debug.log key
+                ( model, Cmd.none )
 
 
 
@@ -127,17 +163,16 @@ view model =
         (row
             [ width fill
             , height fill
+            , Background.color colours.darkGrey
             ]
             [ column
                 [ width (fillPortion 1)
                 , height fill
-                , Background.color colours.grey
                 ]
                 [ text "left" ]
             , column
-                [ width (fillPortion 4)
+                [ width (fillPortion 10)
                 , height fill
-                , Background.color colours.darkGrey
                 ]
                 (List.map
                     viewTask
@@ -146,7 +181,6 @@ view model =
             , column
                 [ width (fillPortion 1)
                 , height fill
-                , Background.color colours.grey
                 ]
                 [ text "right" ]
             ]
@@ -159,16 +193,32 @@ view model =
 
 viewTask : Task -> Element Msg
 viewTask task =
+    let
+        border =
+            if task.selected then
+                Border.widthEach { right = 1, left = 1, top = 1, bottom = 1 }
+
+            else
+                Border.widthEach { right = 0, left = 0, top = 0, bottom = 0 }
+    in
     row
         [ paddingXY 0 20
         , centerX
         , width fill
         ]
-        [ el
+        [ row
             [ padding 30
             , width fill
-            , Border.widthEach { right = 1, left = 1, top = 1, bottom = 1 }
+            , border
             , Border.color colours.teal
             ]
-            (text task.text)
+            [ el
+                [ width (fillPortion 7)
+                ]
+                (text task.text)
+            , el
+                [ width (fillPortion 1)
+                ]
+                (text (String.fromInt task.minutes ++ "m"))
+            ]
         ]
