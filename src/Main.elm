@@ -94,7 +94,7 @@ init _ =
               }
             , { text = " another example todo task"
               , minutes = 20
-              , selected = True
+              , selected = False
               , status = Todo
               }
             , { text = "example Doing task"
@@ -132,24 +132,28 @@ type Msg
 
 
 shiftItems : Task -> ( List Task, Bool ) -> ( List Task, Bool )
-shiftItems item carry =
+shiftItems task carry =
     let
-        doneTasks =
-            Tuple.first carry
-
-        applySelected =
-            Tuple.second carry
-
-        selectNextItem =
-            item.selected
-
-        newItem =
-            { item | selected = applySelected }
-
-        newTasks =
-            doneTasks ++ [ newItem ]
+        ( proccessedTasks, applySelected ) =
+            carry
     in
-    ( newTasks, selectNextItem )
+    ( proccessedTasks ++ [ { task | selected = applySelected } ], task.selected )
+
+
+shiftSelectedTasks : List Task -> List Task
+shiftSelectedTasks tasks =
+    let
+        ( shiftedTasks, firstSelected ) =
+            List.foldl shiftItems ( [], False ) tasks
+    in
+    case List.head shiftedTasks of
+        Just task ->
+            shiftedTasks
+                |> List.drop 1
+                |> List.append [ { task | selected = firstSelected } ]
+
+        Nothing ->
+            shiftedTasks
 
 
 
@@ -169,61 +173,24 @@ update msg model =
             ( model, Cmd.none )
 
         MoveSelectedUp ->
-            let
-                -- find the selected value in the list
-                -- select the prev one
-                -- unselect this one
-                listOfTupleTasks =
-                    List.reverse model.tasks |> List.foldl shiftItems ( [], False )
-
-                tasks =
-                    Tuple.first listOfTupleTasks
-
-                shiftToFirstItem =
-                    Tuple.second listOfTupleTasks
-
-                firstTask =
-                    List.head tasks
-
-                newTasks =
-                    case firstTask of
-                        Just task ->
-                            List.drop 1 tasks
-                                |> List.append [ { task | selected = shiftToFirstItem } ]
-
-                        Nothing ->
-                            tasks
-
-                newModel =
-                    { model | tasks = List.reverse newTasks }
-            in
-            ( newModel, Cmd.none )
+            ( { model
+                | tasks =
+                    model.tasks
+                        |> List.reverse
+                        |> shiftSelectedTasks
+                        |> List.reverse
+              }
+            , Cmd.none
+            )
 
         MoveSelectedDown ->
             let
-                listOfTupleTasks =
-                    List.foldl shiftItems ( [], False ) model.tasks
-
-                tasks =
-                    Tuple.first listOfTupleTasks
-
-                shiftToFirstItem =
-                    Tuple.second listOfTupleTasks
-
-                firstTask =
-                    List.head tasks
-
-                newTasks =
-                    case firstTask of
-                        Just task ->
-                            List.drop 1 tasks
-                                |> List.append [ { task | selected = shiftToFirstItem } ]
-
-                        Nothing ->
-                            tasks
-
                 newModel =
-                    { model | tasks = newTasks }
+                    { model
+                        | tasks =
+                            model.tasks
+                                |> shiftSelectedTasks
+                    }
             in
             ( newModel, Cmd.none )
 
