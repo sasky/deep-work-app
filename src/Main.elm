@@ -18,12 +18,20 @@ import Json.Decode exposing (Decoder, field, string)
 
 keyDecoder : Decoder Msg
 keyDecoder =
-    Json.Decode.map OnKeyDownMsg (field "key" string)
+    Json.Decode.map mapKeyToMsg (field "key" string)
 
 
-toKey : String -> Msg
-toKey key =
-    OnKeyDownMsg key
+mapKeyToMsg : String -> Msg
+mapKeyToMsg key =
+    case key of
+        "ArrowUp" ->
+            MoveSelectedUp
+
+        "ArrowDown" ->
+            MoveSelectedDown
+
+        _ ->
+            NoOp
 
 
 
@@ -81,12 +89,12 @@ init _ =
     ( { tasks =
             [ { text = "example todo task"
               , minutes = 45
-              , selected = False
+              , selected = True
               , status = Todo
               }
             , { text = " another example todo task"
               , minutes = 20
-              , selected = False
+              , selected = True
               , status = Todo
               }
             , { text = "example Doing task"
@@ -96,7 +104,7 @@ init _ =
               }
             , { text = "example done task"
               , minutes = 45
-              , selected = True
+              , selected = False
               , status = Done
               }
             , { text = " another example done task"
@@ -118,7 +126,34 @@ type Msg
     = Add Task
     | Delete Int
     | Edit Task
-    | OnKeyDownMsg String
+    | MoveSelectedUp
+    | MoveSelectedDown
+    | NoOp
+
+
+shiftItems : Task -> ( List Task, Bool ) -> ( List Task, Bool )
+shiftItems item carry =
+    let
+        doneTasks =
+            Tuple.first carry
+
+        applySelected =
+            Tuple.second carry
+
+        selectNextItem =
+            item.selected
+
+        newItem =
+            { item | selected = applySelected }
+
+        newTasks =
+            doneTasks ++ [ newItem ]
+    in
+    ( newTasks, selectNextItem )
+
+
+
+-- shiftSelectedTasks
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -133,9 +168,67 @@ update msg model =
         Edit task ->
             ( model, Cmd.none )
 
-        OnKeyDownMsg key ->
-            Debug.log key
-                ( model, Cmd.none )
+        MoveSelectedUp ->
+            let
+                -- find the selected value in the list
+                -- select the prev one
+                -- unselect this one
+                listOfTupleTasks =
+                    List.reverse model.tasks |> List.foldl shiftItems ( [], False )
+
+                tasks =
+                    Tuple.first listOfTupleTasks
+
+                shiftToFirstItem =
+                    Tuple.second listOfTupleTasks
+
+                firstTask =
+                    List.head tasks
+
+                newTasks =
+                    case firstTask of
+                        Just task ->
+                            List.drop 1 tasks
+                                |> List.append [ { task | selected = shiftToFirstItem } ]
+
+                        Nothing ->
+                            tasks
+
+                newModel =
+                    { model | tasks = List.reverse newTasks }
+            in
+            ( newModel, Cmd.none )
+
+        MoveSelectedDown ->
+            let
+                listOfTupleTasks =
+                    List.foldl shiftItems ( [], False ) model.tasks
+
+                tasks =
+                    Tuple.first listOfTupleTasks
+
+                shiftToFirstItem =
+                    Tuple.second listOfTupleTasks
+
+                firstTask =
+                    List.head tasks
+
+                newTasks =
+                    case firstTask of
+                        Just task ->
+                            List.drop 1 tasks
+                                |> List.append [ { task | selected = shiftToFirstItem } ]
+
+                        Nothing ->
+                            tasks
+
+                newModel =
+                    { model | tasks = newTasks }
+            in
+            ( newModel, Cmd.none )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 
