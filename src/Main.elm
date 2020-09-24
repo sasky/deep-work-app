@@ -1,8 +1,37 @@
 module Main exposing (Model, Msg(..), Task, main)
 
 import Browser
-import Html exposing (Html, h2, li, pre, section, span, text, ul)
-import Html.Attributes exposing (class, classList, list, selected)
+import Browser.Events as Events exposing (onKeyDown)
+import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
+import Html exposing (Html)
+import Json.Decode exposing (Decoder, field, string)
+
+
+
+-- onKeyUp : (Int -> msg) -> Attribute msg
+-- onKeyUp tagger =
+--   on "keyup" (Json.map tagger keyCode)
+
+
+keyDecoder : Decoder Msg
+keyDecoder =
+    Json.Decode.map mapKeyToMsg (field "key" string)
+
+
+mapKeyToMsg : String -> Msg
+mapKeyToMsg key =
+    case key of
+        "ArrowUp" ->
+            MoveSelectedUp
+
+        "ArrowDown" ->
+            MoveSelectedDown
+
+        _ ->
+            NoOp
 
 
 
@@ -10,28 +39,39 @@ import Html.Attributes exposing (class, classList, list, selected)
 
 
 main =
-    Browser.sandbox
+    Browser.element
         { init = init
-        , update = update
         , view = view
+        , update = update
+        , subscriptions = subscriptions
         }
 
 
 
--- Debug.todo "add some style elm ui or tail wind"
--- Debug.todo "move list items around by drag and drop"
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Events.onKeyDown keyDecoder
+
+
+
+-- Debug.todo " up and down arrow keys to move selected"
+-- Debug.todo "add colours and layout ( still mvp)"
 -- Debug.todo "Add a Select merchanic ( only one item to be selected at a time ) "
 -- Debug.todo "move list items around by arrows when selected"
+-- Debug.todo "move list items around by drag and drop"
 -- MODEL
 
 
 type alias Model =
-    List Task
+    { tasks : List Task
+    }
 
 
 type alias Task =
-    { id : Int
-    , text : String
+    { text : String
     , minutes : Int
     , selected : Bool
     , status : Status
@@ -44,39 +84,38 @@ type Status
     | Done
 
 
-init : Model
-init =
-    [ { id = 1
-      , text = "example todo task"
-      , minutes = 45
-      , selected = False
-      , status = Todo
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( { tasks =
+            [ { text = "example todo task"
+              , minutes = 45
+              , selected = True
+              , status = Todo
+              }
+            , { text = " another example todo task"
+              , minutes = 20
+              , selected = True
+              , status = Todo
+              }
+            , { text = "example Doing task"
+              , minutes = 45
+              , selected = False
+              , status = Doing
+              }
+            , { text = "example done task"
+              , minutes = 45
+              , selected = False
+              , status = Done
+              }
+            , { text = " another example done task"
+              , minutes = 20
+              , selected = False
+              , status = Done
+              }
+            ]
       }
-    , { id = 2
-      , text = " another example todo task"
-      , minutes = 20
-      , selected = False
-      , status = Todo
-      }
-    , { id = 3
-      , text = "example Doing task"
-      , minutes = 45
-      , selected = False
-      , status = Doing
-      }
-    , { id = 4
-      , text = "example done task"
-      , minutes = 45
-      , selected = False
-      , status = Done
-      }
-    , { id = 5
-      , text = " another example done task"
-      , minutes = 20
-      , selected = False
-      , status = Done
-      }
-    ]
+    , Cmd.none
+    )
 
 
 
@@ -87,54 +126,192 @@ type Msg
     = Add Task
     | Delete Int
     | Edit Task
+    | MoveSelectedUp
+    | MoveSelectedDown
+    | NoOp
 
 
-update : Msg -> Model -> Model
+shiftItems : Task -> ( List Task, Bool ) -> ( List Task, Bool )
+shiftItems item carry =
+    let
+        doneTasks =
+            Tuple.first carry
+
+        applySelected =
+            Tuple.second carry
+
+        selectNextItem =
+            item.selected
+
+        newItem =
+            { item | selected = applySelected }
+
+        newTasks =
+            doneTasks ++ [ newItem ]
+    in
+    ( newTasks, selectNextItem )
+
+
+
+-- shiftSelectedTasks
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Add task ->
-            model
+            ( model, Cmd.none )
 
         Delete id ->
-            model
+            ( model, Cmd.none )
 
         Edit task ->
-            model
+            ( model, Cmd.none )
+
+        MoveSelectedUp ->
+            let
+                -- find the selected value in the list
+                -- select the prev one
+                -- unselect this one
+                listOfTupleTasks =
+                    List.reverse model.tasks |> List.foldl shiftItems ( [], False )
+
+                tasks =
+                    Tuple.first listOfTupleTasks
+
+                shiftToFirstItem =
+                    Tuple.second listOfTupleTasks
+
+                firstTask =
+                    List.head tasks
+
+                newTasks =
+                    case firstTask of
+                        Just task ->
+                            List.drop 1 tasks
+                                |> List.append [ { task | selected = shiftToFirstItem } ]
+
+                        Nothing ->
+                            tasks
+
+                newModel =
+                    { model | tasks = List.reverse newTasks }
+            in
+            ( newModel, Cmd.none )
+
+        MoveSelectedDown ->
+            let
+                listOfTupleTasks =
+                    List.foldl shiftItems ( [], False ) model.tasks
+
+                tasks =
+                    Tuple.first listOfTupleTasks
+
+                shiftToFirstItem =
+                    Tuple.second listOfTupleTasks
+
+                firstTask =
+                    List.head tasks
+
+                newTasks =
+                    case firstTask of
+                        Just task ->
+                            List.drop 1 tasks
+                                |> List.append [ { task | selected = shiftToFirstItem } ]
+
+                        Nothing ->
+                            tasks
+
+                newModel =
+                    { model | tasks = newTasks }
+            in
+            ( newModel, Cmd.none )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 
--- SUBSCRIPTIONS
--- VIEW
+-- View
+-- Colours
+-- colours :
+
+
+colours =
+    { green = rgb255 138 220 84
+    , red = rgb255 255 50 116
+    , purple = rgb255 145 120 222
+    , teal = rgb255 66 215 228
+    , yellow = rgb255 255 209 60
+    , grey = rgb255 87 85 87
+    , darkGrey = rgb255 34 31 35
+    }
 
 
 view : Model -> Html Msg
 view model =
-    section []
-        [ h2 [] [ text "Doing" ]
-        , renderTasks Doing model
-        , h2 [] [ text "Todo" ]
-        , renderTasks Todo model
-        , h2 [] [ text "Done" ]
-        , renderTasks Done model
+    Element.layout
+        [ Font.color (rgb255 251 251 248)
         ]
-
-
-renderTasks : Status -> Model -> Html Msg
-renderTasks status model =
-    ul []
-        (List.filter (\t -> t.status == status) model
-            |> List.map renderTask
+        (row
+            [ width fill
+            , height fill
+            , Background.color colours.darkGrey
+            ]
+            [ column
+                [ width (fillPortion 1)
+                , height fill
+                ]
+                [ text "left" ]
+            , column
+                [ width (fillPortion 10)
+                , height fill
+                ]
+                (List.map
+                    viewTask
+                    model.tasks
+                )
+            , column
+                [ width (fillPortion 1)
+                , height fill
+                ]
+                [ text "right" ]
+            ]
         )
 
 
-renderTask : Task -> Html Msg
-renderTask task =
-    li []
-        [ span [ class "text" ] [ text task.text ]
-        , span [ class "minutes" ] [ text (String.fromInt task.minutes) ]
+
+-- (List.map viewTask model.tasks))
+
+
+viewTask : Task -> Element Msg
+viewTask task =
+    let
+        border =
+            if task.selected then
+                Border.widthEach { right = 1, left = 1, top = 1, bottom = 1 }
+
+            else
+                Border.widthEach { right = 0, left = 0, top = 0, bottom = 0 }
+    in
+    row
+        [ paddingXY 0 20
+        , centerX
+        , width fill
         ]
-
-
-
--- [ span [ class "text" ] [ text task.text ] ]
--- , [ span [ class "minutes" ] [ text task.minutes ] ]
+        [ row
+            [ padding 30
+            , width fill
+            , border
+            , Border.color colours.teal
+            ]
+            [ el
+                [ width (fillPortion 7)
+                ]
+                (text task.text)
+            , el
+                [ width (fillPortion 1)
+                ]
+                (text (String.fromInt task.minutes ++ "m"))
+            ]
+        ]
